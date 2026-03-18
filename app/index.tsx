@@ -1,16 +1,18 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { SignedIn, SignedOut, useAuth } from '@clerk/clerk-expo';
-import { Link, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { db } from '../utils/firebase';
+import { Link, useRouter } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
+import { BarChart2, Home, Plus, User } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Colors from '../constants/Colors';
+import { db } from '../utils/firebase';
 
 export default function Index() {
   const { signOut, isSignedIn, isLoaded, userId } = useAuth();
   const router = useRouter();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+  const [activeTab, setActiveTab] = useState('home');
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -62,11 +64,69 @@ export default function Index() {
     <View style={styles.container}>
       <SignedIn>
         <View style={styles.content}>
-          <Text style={styles.title}>AI Calories Tracker</Text>
-          <Text style={styles.subtitle}>Welcome to your dashboard!</Text>
-          <TouchableOpacity style={styles.buttonError} onPress={() => signOut()}>
-            <Text style={styles.buttonText}>Sign Out</Text>
-          </TouchableOpacity>
+          {activeTab === 'home' && (
+            <View style={styles.tabContent}>
+              <Text style={styles.title}>AI Calories Tracker</Text>
+              <Text style={styles.subtitle}>Welcome to your dashboard!</Text>
+              <TouchableOpacity style={styles.buttonError} onPress={() => signOut()}>
+                <Text style={styles.buttonText}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {activeTab === 'analytics' && (
+            <View style={styles.tabContent}>
+              <Text style={styles.title}>Analytics</Text>
+              <Text style={styles.subtitle}>Your progress at a glance</Text>
+              <View style={styles.placeholderCard}>
+                <BarChart2 size={48} color={Colors.primary} />
+                <Text style={styles.placeholderText}>Charts and insights will appear here.</Text>
+              </View>
+            </View>
+          )}
+
+          {activeTab === 'profile' && (
+            <View style={styles.tabContent}>
+              <Text style={styles.title}>Your Profile</Text>
+              <Text style={styles.subtitle}>Manage your health settings</Text>
+              <View style={styles.placeholderCard}>
+                <User size={48} color={Colors.primary} />
+                <Text style={styles.placeholderText}>Profile details and settings coming soon.</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Floating Navigation */}
+        <View style={styles.floatingNavContainer}>
+          <View style={styles.floatingNav}>
+            <TouchableOpacity 
+              style={[styles.navItem, activeTab === 'home' && styles.navItemActive]} 
+              onPress={() => setActiveTab('home')}
+            >
+              <Home size={28} color={activeTab === 'home' ? Colors.primary : Colors.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.navItem, activeTab === 'analytics' && styles.navItemActive]} 
+              onPress={() => setActiveTab('analytics')}
+            >
+              <BarChart2 size={28} color={activeTab === 'analytics' ? Colors.primary : Colors.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.navItem, activeTab === 'profile' && styles.navItemActive]} 
+              onPress={() => setActiveTab('profile')}
+            >
+              <User size={28} color={activeTab === 'profile' ? Colors.primary : Colors.textMuted} />
+            </TouchableOpacity>
+
+            <View style={styles.navDivider} />
+
+            <TouchableOpacity style={styles.addButton}>
+              <Plus size={32} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </SignedIn>
       
@@ -106,9 +166,84 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    padding: 24,
+    paddingTop: 60,
+  },
+  tabContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeholderCard: {
+    backgroundColor: Colors.backgroundLight,
+    padding: 40,
+    borderRadius: 24,
+    alignItems: 'center',
+    marginTop: 40,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderStyle: 'dashed',
+  },
+  placeholderText: {
+    marginTop: 16,
+    color: Colors.textMuted,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  floatingNavContainer: {
+    position: 'absolute',
+    bottom: 30,
+    width: '100%',
+    alignItems: 'center',
+    paddingHorizontal: '5%',
+  },
+  floatingNav: {
+    width: '100%',
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 30,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  navItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginHorizontal: 1,
+  },
+  navItemActive: {
+    backgroundColor: Colors.primary + '10', // 10% opacity
+  },
+  navDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: Colors.border,
+    marginHorizontal: 1,
+  },
+  addButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+    marginRight: 4,
   },
   authContainer: {
     flex: 1,
