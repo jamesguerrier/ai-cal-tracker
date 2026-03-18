@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Image, ScrollView } from 'react-native';
 import { useSignIn, useOAuth } from '@clerk/clerk-expo';
 import { Link, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { ArrowLeft, Mail, Lock } from 'lucide-react-native';
+import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import Colors from '../../constants/Colors';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -15,6 +15,7 @@ export default function SignInScreen() {
 
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const onSignInPress = async () => {
@@ -58,68 +59,81 @@ export default function SignInScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
-        <Image 
-          source={require('../../assets/images/icon.png')} 
-          style={styles.logo} 
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Enter your details to sign in</Text>
-
-        <TouchableOpacity style={styles.googleButton} onPress={onGoogleSignInPress}>
-          <Text style={styles.googleButtonText}>Continue with Google</Text>
-        </TouchableOpacity>
-
-        <View style={styles.dividerContainer}>
-          <View style={styles.divider} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.divider} />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Mail color={Colors.textMuted} size={20} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            autoCapitalize="none"
-            value={emailAddress}
-            placeholder="Email address"
-            placeholderTextColor={Colors.textMuted}
-            onChangeText={setEmailAddress}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.content}>
+          <Image 
+            source={require('../../assets/images/icon.png')} 
+            style={styles.logo} 
+            resizeMode="contain"
           />
-        </View>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Enter your details to sign in</Text>
 
-        <View style={styles.inputContainer}>
-          <Lock color={Colors.textMuted} size={20} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            value={password}
-            placeholder="Password"
-            placeholderTextColor={Colors.textMuted}
-            secureTextEntry
-            onChangeText={setPassword}
-          />
-        </View>
+          <TouchableOpacity style={styles.googleButton} onPress={onGoogleSignInPress}>
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.primaryButton, loading && styles.buttonDisabled]} 
-          onPress={onSignInPress}
-          disabled={loading}
-        >
-          <Text style={styles.primaryButtonText}>
-            {loading ? 'Signing In...' : 'Sign In'}
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.divider} />
+          </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
-          <Link href="/(auth)/sign-up" asChild>
-            <TouchableOpacity>
-              <Text style={styles.footerLink}>Sign Up</Text>
+          <View style={styles.inputContainer}>
+            <Mail color={Colors.textMuted} size={20} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              autoCapitalize="none"
+              value={emailAddress}
+              placeholder="Email address"
+              placeholderTextColor={Colors.textMuted}
+              onChangeText={setEmailAddress}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Lock color={Colors.textMuted} size={20} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              value={password}
+              placeholder="Password"
+              placeholderTextColor={Colors.textMuted}
+              secureTextEntry={!showPassword}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+              {showPassword ? (
+                <EyeOff color={Colors.textMuted} size={20} />
+              ) : (
+                <Eye color={Colors.textMuted} size={20} />
+              )}
             </TouchableOpacity>
-          </Link>
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.primaryButton, loading && styles.buttonDisabled]} 
+            onPress={onSignInPress}
+            disabled={loading}
+          >
+            <Text style={styles.primaryButtonText}>
+              {loading ? 'Signing In...' : 'Sign In'}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Don't have an account? </Text>
+            <Link href="/(auth)/sign-up" asChild>
+              <TouchableOpacity>
+                <Text style={styles.footerLink}>Sign Up</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -151,6 +165,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     flex: 1,
     paddingTop: 10,
+    paddingBottom: 40,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   logo: {
     width: 64,
@@ -213,6 +231,9 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     marginRight: 10,
+  },
+  eyeIcon: {
+    padding: 8,
   },
   input: {
     flex: 1,

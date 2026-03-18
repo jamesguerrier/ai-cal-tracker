@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Image, ScrollView } from 'react-native';
 import { useSignUp, useOAuth } from '@clerk/clerk-expo';
 import { Link, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { ArrowLeft, Mail, Lock, User } from 'lucide-react-native';
+import { ArrowLeft, Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
 import { db } from '../../utils/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import Colors from '../../constants/Colors';
@@ -19,6 +19,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -84,7 +85,7 @@ export default function SignUpScreen() {
           lastName
         );
         await setActive({ session: completeSignUp.createdSessionId });
-        router.replace('/');
+        router.replace('/(auth)/onboarding');
       } else {
         console.error(JSON.stringify(completeSignUp, null, 2));
       }
@@ -109,7 +110,7 @@ export default function SignUpScreen() {
            );
         }
         await setOAuthActive({ session: createdSessionId });
-        router.replace('/');
+        router.replace('/(auth)/onboarding');
       }
     } catch (err) {
       console.error('OAuth error', err);
@@ -124,32 +125,38 @@ export default function SignUpScreen() {
             <ArrowLeft color={Colors.text} size={24} />
           </TouchableOpacity>
         </View>
-        <View style={styles.content}>
-          <Text style={styles.title}>Confirm Email</Text>
-          <Text style={styles.subtitle}>Enter the verification code sent to {emailAddress}</Text>
-          
-          <View style={styles.inputContainer}>
-            <Lock color={Colors.textMuted} size={20} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              value={code}
-              placeholder="Verification Code"
-              placeholderTextColor={Colors.textMuted}
-              keyboardType="number-pad"
-              onChangeText={setCode}
-            />
-          </View>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <Text style={styles.title}>Confirm Email</Text>
+            <Text style={styles.subtitle}>Enter the verification code sent to {emailAddress}</Text>
+            
+            <View style={styles.inputContainer}>
+              <Lock color={Colors.textMuted} size={20} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={code}
+                placeholder="Verification Code"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="number-pad"
+                onChangeText={setCode}
+              />
+            </View>
 
-          <TouchableOpacity 
-            style={[styles.primaryButton, loading && styles.buttonDisabled]} 
-            onPress={onPressVerify}
-            disabled={loading}
-          >
-            <Text style={styles.primaryButtonText}>
-              {loading ? 'Verifying...' : 'Verify Email'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity 
+              style={[styles.primaryButton, loading && styles.buttonDisabled]} 
+              onPress={onPressVerify}
+              disabled={loading}
+            >
+              <Text style={styles.primaryButtonText}>
+                {loading ? 'Verifying...' : 'Verify Email'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -165,90 +172,103 @@ export default function SignUpScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
-        <Image 
-          source={require('../../assets/images/icon.png')} 
-          style={styles.logo} 
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Start your AI Calorie tracking journey</Text>
-
-        <TouchableOpacity style={styles.googleButton} onPress={onGoogleSignUpPress}>
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
-        </TouchableOpacity>
-
-        <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>or continue with email</Text>
-            <View style={styles.divider} />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <User color={Colors.textMuted} size={20} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            value={firstName}
-            placeholder="First Name"
-            placeholderTextColor={Colors.textMuted}
-            onChangeText={setFirstName}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.content}>
+          <Image 
+            source={require('../../assets/images/icon.png')} 
+            style={styles.logo} 
+            resizeMode="contain"
           />
-        </View>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Start your AI Calorie tracking journey</Text>
 
-        <View style={styles.inputContainer}>
-          <User color={Colors.textMuted} size={20} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            value={lastName}
-            placeholder="Last Name"
-            placeholderTextColor={Colors.textMuted}
-            onChangeText={setLastName}
-          />
-        </View>
+          <TouchableOpacity style={styles.googleButton} onPress={onGoogleSignUpPress}>
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+          </TouchableOpacity>
 
-        <View style={styles.inputContainer}>
-          <Mail color={Colors.textMuted} size={20} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            autoCapitalize="none"
-            value={emailAddress}
-            placeholder="Email address"
-            placeholderTextColor={Colors.textMuted}
-            onChangeText={setEmailAddress}
-          />
-        </View>
+          <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>or continue with email</Text>
+              <View style={styles.divider} />
+          </View>
 
-        <View style={styles.inputContainer}>
-          <Lock color={Colors.textMuted} size={20} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            value={password}
-            placeholder="Password"
-            placeholderTextColor={Colors.textMuted}
-            secureTextEntry
-            onChangeText={setPassword}
-          />
-        </View>
+          <View style={styles.inputContainer}>
+            <User color={Colors.textMuted} size={20} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              value={firstName}
+              placeholder="First Name"
+              placeholderTextColor={Colors.textMuted}
+              onChangeText={setFirstName}
+            />
+          </View>
 
-        <TouchableOpacity 
-          style={[styles.primaryButton, loading && styles.buttonDisabled]} 
-          onPress={onSignUpPress}
-          disabled={loading}
-        >
-          <Text style={styles.primaryButtonText}>
-            {loading ? 'Creating Account...' : 'Sign Up'}
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.inputContainer}>
+            <User color={Colors.textMuted} size={20} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              value={lastName}
+              placeholder="Last Name"
+              placeholderTextColor={Colors.textMuted}
+              onChangeText={setLastName}
+            />
+          </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <Link href="/(auth)/sign-in" asChild>
-            <TouchableOpacity>
-              <Text style={styles.footerLink}>Sign In</Text>
+          <View style={styles.inputContainer}>
+            <Mail color={Colors.textMuted} size={20} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              autoCapitalize="none"
+              value={emailAddress}
+              placeholder="Email address"
+              placeholderTextColor={Colors.textMuted}
+              onChangeText={setEmailAddress}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Lock color={Colors.textMuted} size={20} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              value={password}
+              placeholder="Password"
+              placeholderTextColor={Colors.textMuted}
+              secureTextEntry={!showPassword}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+              {showPassword ? (
+                <EyeOff color={Colors.textMuted} size={20} />
+              ) : (
+                <Eye color={Colors.textMuted} size={20} />
+              )}
             </TouchableOpacity>
-          </Link>
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.primaryButton, loading && styles.buttonDisabled]} 
+            onPress={onSignUpPress}
+            disabled={loading}
+          >
+            <Text style={styles.primaryButtonText}>
+              {loading ? 'Creating Account...' : 'Sign Up'}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <Link href="/(auth)/sign-in" asChild>
+              <TouchableOpacity>
+                <Text style={styles.footerLink}>Sign In</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -280,6 +300,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     flex: 1,
     paddingTop: 10,
+    paddingBottom: 40,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   logo: {
     width: 64,
@@ -342,6 +366,9 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     marginRight: 10,
+  },
+  eyeIcon: {
+    padding: 8,
   },
   input: {
     flex: 1,

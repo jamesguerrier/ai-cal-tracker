@@ -1,10 +1,63 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { SignedIn, SignedOut, useAuth } from '@clerk/clerk-expo';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { db } from '../utils/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import Colors from '../constants/Colors';
 
 export default function Index() {
-  const { signOut } = useAuth();
+  const { signOut, isSignedIn, isLoaded, userId } = useAuth();
+  const router = useRouter();
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (!isLoaded) return;
+      
+      if (isSignedIn && userId) {
+        try {
+          const localData = await AsyncStorage.getItem('user_health_data');
+          if (localData) {
+            const parsedData = JSON.parse(localData);
+            if (parsedData.onboardingCompleted) {
+              setCheckingOnboarding(false);
+              return;
+            }
+          }
+
+          // Check Firestore if local storage is empty or incomplete
+          const docRef = doc(db, 'users', userId);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists() && docSnap.data().onboardingCompleted) {
+            // Sync to local storage
+            await AsyncStorage.setItem('user_health_data', JSON.stringify(docSnap.data()));
+            setCheckingOnboarding(false);
+            return;
+          }
+
+          // If neither has it or it's incomplete, redirect to onboarding
+          router.replace('/(auth)/onboarding');
+          return;
+        } catch (e) {
+          console.error("Error checking onboarding status", e);
+        }
+      }
+      setCheckingOnboarding(false);
+    };
+
+    checkOnboarding();
+  }, [isSignedIn, isLoaded, router, userId]);
+
+  if (!isLoaded || (isSignedIn && checkingOnboarding)) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <SignedIn>
@@ -46,6 +99,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     flex: 1,
