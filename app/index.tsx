@@ -1,10 +1,18 @@
 import { SignedIn, SignedOut, useAuth } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useRouter } from 'expo-router';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, updateDoc, increment, collection, addDoc } from 'firebase/firestore';
 import { BarChart2, Home, Plus, User } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import HomeHeader from '../components/HomeHeader';
+import LogModal from '../components/LogModal';
+import ActionModal from '../components/ActionModal';
+import EditPlanModal from '../components/EditPlanModal';
+import NutritionCard from '../components/NutritionCard';
+import WaterCard from '../components/WaterCard';
+import RecentActivity from '../components/RecentActivity';
+import WeeklyCalendar from '../components/WeeklyCalendar';
 import Colors from '../constants/Colors';
 import { db } from '../utils/firebase';
 
@@ -13,6 +21,23 @@ export default function Index() {
   const router = useRouter();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [userPlan, setUserPlan] = useState<any>(null);
+  const [dailyTotals, setDailyTotals] = useState<any>({
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
+    water: 0
+  });
+  const [activities, setActivities] = useState<any[]>([]);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [showEditPlanModal, setShowEditPlanModal] = useState(false);
+
+  const formatDate = (date: Date) => {
+    return date.toISOString().split('T')[0];
+  };
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -52,6 +77,138 @@ export default function Index() {
     checkOnboarding();
   }, [isSignedIn, isLoaded, router, userId]);
 
+  // Fetch Goals
+  useEffect(() => {
+    if (!userId || !isSignedIn) return;
+
+    const fetchGoals = async () => {
+        const docRef = doc(db, 'users', userId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            setUserPlan(docSnap.data().plan);
+        }
+    };
+    fetchGoals();
+  }, [userId, isSignedIn]);
+
+  // Fetch/Sync Daily Totals
+  useEffect(() => {
+    if (!userId || !isSignedIn) return;
+
+    const dateStr = formatDate(selectedDate);
+    const totalsRef = doc(db, 'users', userId, 'dailyLogs', dateStr);
+    const entriesRef = collection(db, 'users', userId, 'dailyLogs', dateStr, 'entries');
+
+    const unsubscribeTotals = onSnapshot(totalsRef, (doc) => {
+      if (doc.exists()) {
+        setDailyTotals(doc.data());
+      } else {
+        setDailyTotals({
+          calories: 0,
+          protein: 0,
+          fat: 0,
+          carbs: 0,
+          water: 0,
+          exerciseCalories: 0
+        });
+      }
+    });
+
+    const unsubscribeActivities = onSnapshot(entriesRef, (snapshot) => {
+      const activityList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      // Sort by createdAt descending
+      activityList.sort((a: any, b: any) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setActivities(activityList);
+    });
+
+    return () => {
+      unsubscribeTotals();
+      unsubscribeActivities();
+    };
+  }, [userId, isSignedIn, selectedDate]);
+
+  const handleSaveLog = async (data: any) => {
+    if (!userId) return;
+
+    const dateStr = formatDate(selectedDate);
+    const totalsRef = doc(db, 'users', userId, 'dailyLogs', dateStr);
+    const entriesRef = collection(db, 'users', userId, 'dailyLogs', dateStr, 'entries');
+
+    try {
+      // 1. Add entry
+      await addDoc(entriesRef, {
+        ...data,
+        createdAt: new Date().toISOString()
+      });
+
+      // 2. Update totals (atomically)
+      const docSnap = await getDoc(totalsRef);
+      if (!docSnap.exists()) {
+        await setDoc(totalsRef, {
+          calories: data.calories,
+          protein: data.protein,
+          fat: data.fat,
+          carbs: data.carbs,
+          water: data.water || 0
+        });
+      } else {
+        await updateDoc(totalsRef, {
+          calories: increment(data.calories),
+          protein: increment(data.protein),
+          fat: increment(data.fat),
+          carbs: increment(data.carbs),
+          water: increment(data.water || 0)
+        });
+      }
+      setShowLogModal(false);
+    } catch (e) {
+      console.error("Error saving log", e);
+    }
+  };
+
+  const handleUpdatePlan = async (newPlan: any) => {
+    if (!userId) return;
+
+    try {
+      const docRef = doc(db, 'users', userId);
+      await updateDoc(docRef, {
+        plan: newPlan,
+        updatedAt: new Date().toISOString()
+      });
+      setUserPlan(newPlan);
+      // Also update local storage to keep it in sync
+      const localData = await AsyncStorage.getItem('user_health_data');
+      if (localData) {
+        const parsedData = JSON.parse(localData);
+        await AsyncStorage.setItem('user_health_data', JSON.stringify({
+          ...parsedData,
+          plan: newPlan
+        }));
+      }
+      setShowEditPlanModal(false);
+    } catch (e) {
+      console.error("Error updating plan", e);
+    }
+  };
+
+  const handleActionSelect = (action: string) => {
+    if (action === 'food' || action === 'water') {
+      setShowLogModal(true);
+    }
+    // Exercise and Scan can be stubs for now
+    if (action === 'exercise') {
+      console.log('Exercise logging coming soon');
+    }
+    if (action === 'scan') {
+      alert('Scan Food is a Pro feature!');
+    }
+  };
+
   if (!isLoaded || (isSignedIn && checkingOnboarding)) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -65,13 +222,38 @@ export default function Index() {
       <SignedIn>
         <View style={styles.content}>
           {activeTab === 'home' && (
-            <View style={styles.tabContent}>
-              <Text style={styles.title}>AI Calories Tracker</Text>
-              <Text style={styles.subtitle}>Welcome to your dashboard!</Text>
+            <ScrollView 
+              style={styles.tabContent} 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              <HomeHeader />
+              <WeeklyCalendar 
+                selectedDate={selectedDate} 
+                onDateSelect={setSelectedDate} 
+              />
+              
+              <NutritionCard 
+                caloriesRemaining={Math.max(0, (userPlan?.dailyCalories || 0) - dailyTotals.calories + (dailyTotals.exerciseCalories || 0))}
+                caloriesTotal={userPlan?.dailyCalories || 2000}
+                protein={{ current: dailyTotals.protein, total: userPlan?.proteinGrams || 150 }}
+                fat={{ current: dailyTotals.fat, total: userPlan?.fatGrams || 70 }}
+                carbs={{ current: dailyTotals.carbs, total: userPlan?.carbsGrams || 250 }}
+                onEdit={() => setShowEditPlanModal(true)}
+              />
+
+              <WaterCard 
+                currentLiters={dailyTotals.water || 0}
+                goalLiters={userPlan?.dailyWaterLiters || 2.0}
+                onEdit={() => setShowEditPlanModal(true)}
+              />
+
+              <RecentActivity activities={activities} />
+
               <TouchableOpacity style={styles.buttonError} onPress={() => signOut()}>
                 <Text style={styles.buttonText}>Sign Out</Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           )}
 
           {activeTab === 'analytics' && (
@@ -123,13 +305,35 @@ export default function Index() {
 
             <View style={styles.navDivider} />
 
-            <TouchableOpacity style={styles.addButton}>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => setShowActionModal(true)}
+            >
               <Plus size={32} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
       </SignedIn>
       
+      <ActionModal
+        isVisible={showActionModal}
+        onClose={() => setShowActionModal(false)}
+        onSelect={handleActionSelect}
+      />
+
+      <LogModal 
+        isVisible={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        onSave={handleSaveLog}
+      />
+
+      <EditPlanModal
+        isVisible={showEditPlanModal}
+        onClose={() => setShowEditPlanModal(false)}
+        onSave={handleUpdatePlan}
+        initialData={userPlan}
+      />
+
       <SignedOut>
         <View style={styles.authContainer}>
           <Image 
@@ -171,8 +375,11 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 120, // Space for floating nav
     alignItems: 'center',
-    justifyContent: 'center',
+    width: '100%',
   },
   placeholderCard: {
     backgroundColor: Colors.backgroundLight,
