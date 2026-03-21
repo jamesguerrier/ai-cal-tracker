@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions } from 'react-native';
-import { Edit2 } from 'lucide-react-native';
+import { Edit2, Droplet } from 'lucide-react-native';
 import Colors from '../constants/Colors';
 
 interface WaterCardProps {
@@ -25,12 +25,16 @@ export default function WaterCard({ currentLiters, goalLiters, onEdit }: WaterCa
     glasses.push(status);
   }
 
-  const glassesLeft = Math.max(0, totalGlasses - Math.floor(filledGlasses));
+  const glassesLeft = Math.max(0, totalGlasses - filledGlasses);
+  const formattedGlassesLeft = glassesLeft % 1 === 0 ? glassesLeft.toString() : glassesLeft.toFixed(1);
 
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Water</Text>
+        <View>
+          <Text style={styles.headerTitle}>Water Intake</Text>
+          <Text style={styles.headerSubtitle}>{currentLiters.toFixed(2)}L / {goalLiters.toFixed(1)}L Goal</Text>
+        </View>
         <TouchableOpacity onPress={onEdit} style={styles.editButton}>
           <Edit2 size={20} color={Colors.textMuted} />
         </TouchableOpacity>
@@ -60,15 +64,22 @@ export default function WaterCard({ currentLiters, goalLiters, onEdit }: WaterCa
         </View>
       </ScrollView>
 
-      {glassesLeft > 0 ? (
-        <Text style={styles.footerText}>
-          {glassesLeft} {glassesLeft === 1 ? 'glass' : 'glasses'} left to stay hydrated
-        </Text>
-      ) : (
-        <Text style={[styles.footerText, { color: Colors.primary }]}>
-          Daily hydration goal reached! 💧
-        </Text>
-      )}
+      <View style={styles.footer}>
+        {glassesLeft > 0 ? (
+          <View style={styles.footerContent}>
+            <Droplet size={16} color={Colors.primary} />
+            <Text style={styles.footerText}>
+              <Text style={styles.highlightText}>{formattedGlassesLeft}</Text> {glassesLeft === 1 ? 'glass' : 'glasses'} left to reach your goal
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.footerContent}>
+            <Text style={[styles.footerText, { color: Colors.primary, fontWeight: '700' }]}>
+              Goal reached! You're fully hydrated 💧
+            </Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -100,6 +111,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
+  headerSubtitle: {
+    fontSize: 14,
+    color: Colors.textMuted,
+    fontWeight: '500',
+    marginTop: 2,
+  },
   editButton: {
     padding: 5,
   },
@@ -110,9 +127,6 @@ const styles = StyleSheet.create({
   glassesGrid: {
     flexDirection: 'row',
     alignItems: 'center',
-    // We don't need a strict grid if we have horizontal scroll, 
-    // but the user said "maximum in one row 8 glasses if more add a scroll behavior".
-    // This usually means if > 8, we scroll.
   },
   glassWrapper: {
     width: 45,
@@ -125,11 +139,26 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  footer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  footerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   footerText: {
     fontSize: 14,
     color: Colors.textMuted,
     fontWeight: '600',
-    marginTop: 16,
-    textAlign: 'center',
+  },
+  highlightText: {
+    color: Colors.primary,
+    fontSize: 16,
+    fontWeight: '800',
   },
 });

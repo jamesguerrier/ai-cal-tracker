@@ -15,6 +15,7 @@ import RecentActivity from '../components/RecentActivity';
 import WeeklyCalendar from '../components/WeeklyCalendar';
 import Colors from '../constants/Colors';
 import { db } from '../utils/firebase';
+import AnalyticsView from '../components/AnalyticsView';
 
 export default function Index() {
   const { signOut, isSignedIn, isLoaded, userId } = useAuth();
@@ -33,6 +34,7 @@ export default function Index() {
   const [activities, setActivities] = useState<any[]>([]);
   const [showActionModal, setShowActionModal] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
+  const [editData, setEditData] = useState<any>(null);
   const [showEditPlanModal, setShowEditPlanModal] = useState(false);
 
   const formatDate = (date: Date) => {
@@ -140,35 +142,78 @@ export default function Index() {
     const entriesRef = collection(db, 'users', userId, 'dailyLogs', dateStr, 'entries');
 
     try {
-      // 1. Add entry
-      await addDoc(entriesRef, {
-        ...data,
-        createdAt: new Date().toISOString()
-      });
+      if (data.id) {
+        // UPDATE EXISTING ENTRY
+        const entryRef = doc(db, 'users', userId, 'dailyLogs', dateStr, 'entries', data.id);
+        const oldEntrySnap = await getDoc(entryRef);
+        if (oldEntrySnap.exists()) {
+          const oldData = oldEntrySnap.data();
+          
+          // Calculate differences
+          const diffCals = (data.calories || 0) - (oldData.calories || 0);
+          const diffProtein = (data.protein || 0) - (oldData.protein || 0);
+          const diffFat = (data.fat || 0) - (oldData.fat || 0);
+          const diffCarbs = (data.carbs || 0) - (oldData.carbs || 0);
+          const diffWater = (data.water || 0) - (oldData.water || 0);
 
-      // 2. Update totals (atomically)
-      const docSnap = await getDoc(totalsRef);
-      if (!docSnap.exists()) {
-        await setDoc(totalsRef, {
-          calories: data.calories,
-          protein: data.protein,
-          fat: data.fat,
-          carbs: data.carbs,
-          water: data.water || 0
-        });
+          await updateDoc(entryRef, {
+            ...data,
+            updatedAt: new Date().toISOString()
+          });
+
+          await updateDoc(totalsRef, {
+            calories: increment(diffCals),
+            protein: increment(diffProtein),
+            fat: increment(diffFat),
+            carbs: increment(diffCarbs),
+            water: increment(diffWater)
+          });
+        }
       } else {
-        await updateDoc(totalsRef, {
-          calories: increment(data.calories),
-          protein: increment(data.protein),
-          fat: increment(data.fat),
-          carbs: increment(data.carbs),
-          water: increment(data.water || 0)
+        // ADD NEW ENTRY
+        await addDoc(entriesRef, {
+          ...data,
+          source: data.source || 'manual',
+          createdAt: new Date().toISOString()
         });
+
+        const docSnap = await getDoc(totalsRef);
+        if (!docSnap.exists()) {
+          await setDoc(totalsRef, {
+            calories: data.calories,
+            protein: data.protein,
+            fat: data.fat,
+            carbs: data.carbs,
+            water: data.water || 0
+          });
+        } else {
+          await updateDoc(totalsRef, {
+            calories: increment(data.calories),
+            protein: increment(data.protein),
+            fat: increment(data.fat),
+            carbs: increment(data.carbs),
+            water: increment(data.water || 0)
+          });
+        }
       }
       setShowLogModal(false);
+      setEditData(null);
     } catch (e) {
       console.error("Error saving log", e);
     }
+  };
+
+  const handleEditActivity = (activity: any) => {
+    setEditData({
+      id: activity.id,
+      name: activity.name || activity.title,
+      calories: activity.calories,
+      protein: activity.protein,
+      fat: activity.fat,
+      carbs: activity.carbs,
+      water: activity.water
+    });
+    setShowLogModal(true);
   };
 
   const handleUpdatePlan = async (newPlan: any) => {
@@ -205,7 +250,7 @@ export default function Index() {
       console.log('Exercise logging coming soon');
     }
     if (action === 'scan') {
-      alert('Scan Food is a Pro feature!');
+      // Handled in ActionModal via router.push('/camera-view')
     }
   };
 
@@ -248,7 +293,10 @@ export default function Index() {
                 onEdit={() => setShowEditPlanModal(true)}
               />
 
-              <RecentActivity activities={activities} />
+              <RecentActivity 
+                activities={activities} 
+                onEdit={handleEditActivity}
+              />
 
               <TouchableOpacity style={styles.buttonError} onPress={() => signOut()}>
                 <Text style={styles.buttonText}>Sign Out</Text>
@@ -257,14 +305,7 @@ export default function Index() {
           )}
 
           {activeTab === 'analytics' && (
-            <View style={styles.tabContent}>
-              <Text style={styles.title}>Analytics</Text>
-              <Text style={styles.subtitle}>Your progress at a glance</Text>
-              <View style={styles.placeholderCard}>
-                <BarChart2 size={48} color={Colors.primary} />
-                <Text style={styles.placeholderText}>Charts and insights will appear here.</Text>
-              </View>
-            </View>
+            <AnalyticsView />
           )}
 
           {activeTab === 'profile' && (
@@ -323,8 +364,12 @@ export default function Index() {
 
       <LogModal 
         isVisible={showLogModal}
-        onClose={() => setShowLogModal(false)}
+        onClose={() => {
+          setShowLogModal(false);
+          setEditData(null);
+        }}
         onSave={handleSaveLog}
+        initialData={editData}
       />
 
       <EditPlanModal

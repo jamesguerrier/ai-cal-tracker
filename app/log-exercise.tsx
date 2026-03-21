@@ -4,10 +4,10 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  SafeAreaView, 
   ScrollView,
   Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Activity, Dumbbell, Flame, ChevronRight } from 'lucide-react-native';
 import Colors from '../constants/Colors';
