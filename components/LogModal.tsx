@@ -17,10 +17,11 @@ import Colors from '../constants/Colors';
 interface LogModalProps {
   isVisible: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; calories: number; protein: number; fat: number; carbs: number; water: number }) => void;
+  onSave: (data: { id?: string; name: string; calories: number; protein: number; fat: number; carbs: number; water: number }) => void;
+  initialData?: { id: string; name: string; calories: number; protein: number; fat: number; carbs: number; water: number };
 }
 
-export default function LogModal({ isVisible, onClose, onSave }: LogModalProps) {
+export default function LogModal({ isVisible, onClose, onSave, initialData }: LogModalProps) {
   const [name, setName] = useState('');
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
@@ -28,8 +29,28 @@ export default function LogModal({ isVisible, onClose, onSave }: LogModalProps) 
   const [carbs, setCarbs] = useState('');
   const [water, setWater] = useState('');
 
+  React.useEffect(() => {
+    if (initialData && isVisible) {
+      setName(initialData.name || '');
+      setCalories(initialData.calories?.toString() || '');
+      setProtein(initialData.protein?.toString() || '');
+      setFat(initialData.fat?.toString() || '');
+      setCarbs(initialData.carbs?.toString() || '');
+      setWater(initialData.water?.toString() || '');
+    } else if (!isVisible) {
+      // Reset when closed
+      setName('');
+      setCalories('');
+      setProtein('');
+      setFat('');
+      setCarbs('');
+      setWater('');
+    }
+  }, [initialData, isVisible]);
+
   const handleSave = () => {
     onSave({
+      id: initialData?.id,
       name: name || 'Quick Log',
       calories: parseInt(calories) || 0,
       protein: parseInt(protein) || 0,
@@ -63,7 +84,7 @@ export default function LogModal({ isVisible, onClose, onSave }: LogModalProps) 
               <View style={styles.headerIcon}>
                 <Utensils size={24} color={Colors.primary} />
               </View>
-              <Text style={styles.title}>Quick Log</Text>
+              <Text style={styles.title}>{initialData ? 'Edit Log' : 'Quick Log'}</Text>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                 <X size={24} color={Colors.textMuted} />
               </TouchableOpacity>
@@ -145,7 +166,7 @@ export default function LogModal({ isVisible, onClose, onSave }: LogModalProps) 
 
               <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                 <Plus size={20} color="#fff" />
-                <Text style={styles.saveButtonText}>Add to Daily Log</Text>
+                <Text style={styles.saveButtonText}>{initialData ? 'Update Log' : 'Add to Daily Log'}</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>

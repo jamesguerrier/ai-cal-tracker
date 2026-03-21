@@ -1,14 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Utensils, Droplet, History, ClipboardList, Flame, Dumbbell } from 'lucide-react-native';
 import Colors from '../constants/Colors';
 
 interface ActivityItem {
   id: string;
   name: string;
+  title?: string;
   calories?: number;
+  protein?: number;
+  fat?: number;
+  carbs?: number;
   water?: number;
   type?: string;
+  source?: 'camera' | 'gallery' | 'manual';
   createdAt: string;
   duration?: number;
   intensity?: string;
@@ -17,9 +22,10 @@ interface ActivityItem {
 
 interface RecentActivityProps {
   activities: ActivityItem[];
+  onEdit?: (activity: ActivityItem) => void;
 }
 
-export default function RecentActivity({ activities }: RecentActivityProps) {
+export default function RecentActivity({ activities, onEdit }: RecentActivityProps) {
   const formatTime = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
@@ -90,7 +96,9 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
               {/* Info Section */}
               <View style={styles.activityInfo}>
                 <View style={styles.nameRow}>
-                  <Text style={styles.activityName} numberOfLines={1}>{activity.name}</Text>
+                  <Text style={styles.activityName} numberOfLines={1} ellipsizeMode="tail">
+                    {activity.name || activity.title}
+                  </Text>
                   <Text style={styles.activityTime}>{formatTime(activity.createdAt)}</Text>
                 </View>
 
@@ -108,13 +116,42 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
                   </View>
                 ) : (
                   <View style={styles.mealDetails}>
-                    <Text style={styles.valueText}>
-                      {activity.water 
-                        ? `${activity.water.toFixed(2)}L` 
-                        : `+${activity.calories} cal`}
-                    </Text>
+                    <View style={styles.macroDetailsRow}>
+                      <View>
+                        <Text style={styles.valueText}>
+                          {activity.water 
+                            ? `${activity.water.toFixed(2)}L` 
+                            : `+${activity.calories} kcal`}
+                        </Text>
+                        {!isExercise && !activity.water && (
+                          <View style={styles.sourceTag}>
+                            <Text style={styles.sourceText}>
+                              {activity.source === 'gallery' ? 'Uploaded' : 'Scanned'}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      
+                      {!activity.water && (activity.protein !== undefined) && (
+                        <View style={styles.macroRowSmall}>
+                          <Text style={styles.macroSmallText}><Text style={{fontWeight: '800', color: '#F87171'}}>P</Text> {activity.protein}g</Text>
+                          <View style={styles.bullet} />
+                          <Text style={styles.macroSmallText}><Text style={{fontWeight: '800', color: '#FBBF24'}}>F</Text> {activity.fat}g</Text>
+                          <View style={styles.bullet} />
+                          <Text style={styles.macroSmallText}><Text style={{fontWeight: '800', color: '#60A5FA'}}>C</Text> {activity.carbs}g</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 )}
+                
+                {/* Edit Button */}
+                <TouchableOpacity 
+                  style={styles.editCardBtn} 
+                  onPress={() => onEdit?.(activity)}
+                >
+                  <Flame size={18} color={Colors.primary} />
+                </TouchableOpacity>
               </View>
             </View>
           );
@@ -256,6 +293,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.textMuted,
     opacity: 0.5,
   },
+  macroDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 2,
+  },
   mealDetails: {
     marginTop: 2,
   },
@@ -266,5 +310,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: Colors.text,
+  },
+  macroRowSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  macroSmallText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '500',
+  },
+  sourceTag: {
+    backgroundColor: Colors.background,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 2,
+    alignSelf: 'flex-start',
+  },
+  sourceText: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  editCardBtn: {
+    padding: 8,
+    marginLeft: 8,
+    opacity: 0.6,
   },
 });
