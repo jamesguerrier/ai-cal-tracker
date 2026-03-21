@@ -9,7 +9,7 @@ import {
   Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { X, Dumbbell, Droplets, Search, Camera, Crown } from 'lucide-react-native';
+import { X, Dumbbell, Droplet, Search, Camera, Crown } from 'lucide-react-native';
 import Colors from '../constants/Colors';
 
 const { width } = Dimensions.get('window');
@@ -24,7 +24,7 @@ export default function ActionModal({ isVisible, onClose, onSelect }: ActionModa
   const router = useRouter();
   const actions = [
     { id: 'exercise', title: 'Log Exercise', icon: Dumbbell, color: '#F87171' },
-    { id: 'water', title: 'Add Water', icon: Droplets, color: '#60A5FA' },
+    { id: 'water', title: 'Add Water', icon: Droplet, color: '#60A5FA' },
     { id: 'food', title: 'Food Database', icon: Search, color: '#34D399' },
     { id: 'scan', title: 'Scan Food', icon: Camera, color: '#A78BFA', isPremium: true },
   ];
@@ -49,6 +49,9 @@ export default function ActionModal({ isVisible, onClose, onSelect }: ActionModa
                   if (action.id === 'exercise') {
                     onClose();
                     router.push('/log-exercise');
+                  } else if (action.id === 'water') {
+                    onClose();
+                    router.push('/log-water');
                   } else {
                     onSelect(action.id as any);
                     onClose();

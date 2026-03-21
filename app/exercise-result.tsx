@@ -4,11 +4,11 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  SafeAreaView, 
   Dimensions,
   Platform,
   ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Flame, CheckCircle2 } from 'lucide-react-native';
 import { useAuth } from '@clerk/clerk-expo';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
-import { Utensils, Droplets, History, ClipboardList, Flame } from 'lucide-react-native';
+import { Utensils, Droplet, History, ClipboardList, Flame, Dumbbell } from 'lucide-react-native';
 import Colors from '../constants/Colors';
 
 interface ActivityItem {
@@ -10,6 +10,9 @@ interface ActivityItem {
   water?: number;
   type?: string;
   createdAt: string;
+  duration?: number;
+  intensity?: string;
+  exerciseType?: string;
 }
 
 interface RecentActivityProps {
@@ -24,6 +27,17 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
     } catch (e) {
       return '';
     }
+  };
+
+  const getExerciseIcon = (type?: string, name?: string) => {
+    const lowerName = name?.toLowerCase() || '';
+    if (type === 'run' || lowerName.includes('run') || lowerName.includes('walk')) {
+      return <History size={20} color={Colors.primary} />;
+    }
+    if (type === 'weights' || lowerName.includes('lift') || lowerName.includes('gym')) {
+      return <Dumbbell size={20} color={Colors.primary} />;
+    }
+    return <Flame size={20} color={Colors.primary} />;
   };
 
   if (activities.length === 0) {
@@ -47,47 +61,64 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
     <View style={styles.container}>
       <Text style={styles.title}>Recent Activity</Text>
       <View style={styles.list}>
-        {activities.map((activity) => (
-          <View key={activity.id} style={styles.activityItem}>
-            <View 
-              style={[
-                styles.iconContainer, 
-                { 
-                  backgroundColor: 
-                    activity.type === 'exercise' ? Colors.primary + '15' :
-                    activity.water ? '#3B82F615' : 
-                    Colors.primary + '15' 
-                }
-              ]}
-            >
-              {activity.type === 'exercise' ? (
-                <Flame size={20} color={Colors.primary} />
-              ) : activity.water ? (
-                <Droplets size={20} color="#3B82F6" />
-              ) : (
-                <Utensils size={20} color={Colors.primary} />
-              )}
-            </View>
-            
-            <View style={styles.activityInfo}>
-              <Text style={styles.activityName}>{activity.name}</Text>
-              <Text style={styles.activityTime}>{formatTime(activity.createdAt)}</Text>
-            </View>
+        {activities.map((activity) => {
+          const isExercise = activity.type === 'exercise';
+          
+          return (
+            <View key={activity.id} style={styles.activityItem}>
+              {/* Icon Section */}
+              <View 
+                style={[
+                  styles.iconContainer, 
+                  { 
+                    backgroundColor: 
+                      isExercise ? Colors.primary + '15' :
+                      activity.water ? '#3B82F615' : 
+                      Colors.primary + '15' 
+                  }
+                ]}
+              >
+                {isExercise ? (
+                  getExerciseIcon(activity.exerciseType, activity.name)
+                ) : activity.water ? (
+                  <Droplet size={20} color="#3B82F6" />
+                ) : (
+                  <Utensils size={20} color={Colors.primary} />
+                )}
+              </View>
+              
+              {/* Info Section */}
+              <View style={styles.activityInfo}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.activityName} numberOfLines={1}>{activity.name}</Text>
+                  <Text style={styles.activityTime}>{formatTime(activity.createdAt)}</Text>
+                </View>
 
-            <View style={styles.activityValue}>
-              <Text style={[
-                styles.valueText,
-                activity.type === 'exercise' && { color: Colors.primary }
-              ]}>
-                {activity.water 
-                  ? `${activity.water}L` 
-                  : activity.type === 'exercise'
-                    ? `-${activity.calories} cal`
-                    : `+${activity.calories} cal`}
-              </Text>
+                {isExercise ? (
+                  <View style={styles.exerciseDetails}>
+                    <View style={styles.caloriesRow}>
+                      <Flame size={14} color={Colors.primary} style={styles.smallIcon} />
+                      <Text style={styles.caloriesBurned}>{activity.calories} cal burned</Text>
+                    </View>
+                    <View style={styles.metaRow}>
+                      <Text style={styles.metaText}>Intensity: <Text style={styles.metaValue}>{activity.intensity || 'Medium'}</Text></Text>
+                      <View style={styles.bullet} />
+                      <Text style={styles.metaText}>Duration: <Text style={styles.metaValue}>{activity.duration || 0} min</Text></Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.mealDetails}>
+                    <Text style={styles.valueText}>
+                      {activity.water 
+                        ? `${activity.water.toFixed(2)}L` 
+                        : `+${activity.calories} cal`}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );
@@ -172,13 +203,61 @@ const styles = StyleSheet.create({
   },
   activityName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.text,
-    marginBottom: 2,
+    flex: 1,
+    marginRight: 8,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   activityTime: {
     fontSize: 12,
     color: Colors.textMuted,
+    fontWeight: '500',
+  },
+  exerciseDetails: {
+    gap: 4,
+  },
+  caloriesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  smallIcon: {
+    marginRight: 2,
+  },
+  caloriesBurned: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  metaText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '500',
+  },
+  metaValue: {
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  bullet: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: Colors.textMuted,
+    opacity: 0.5,
+  },
+  mealDetails: {
+    marginTop: 2,
   },
   activityValue: {
     alignItems: 'flex-end',
